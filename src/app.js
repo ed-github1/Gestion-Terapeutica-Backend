@@ -3,7 +3,6 @@ import { config } from './config/config.js'
 import { connectDB } from './config/database.js'
 import authRoutes from './routes/auth..js'
 import invitationRoutes from './routes/invitation.js'
-import morgan from 'morgan'
 import cors from 'cors'
 import videoRoutes from './routes/video.js'
 import patientsRoutes from './routes/patients.js'
@@ -15,7 +14,6 @@ const app = express()
 await connectDB()
 
 // Middlewares
-app.use(morgan(config.nodeEnv === 'production' ? 'combined' : 'dev'))
 app.use(cors({
   origin: [
     'http://localhost:5173',
