@@ -40,6 +40,7 @@ export const videoToken = (req, res) => {
  * POST /api/video/notify-patient
  */
 export const notifyPatient = async (req, res) => {
+  console.log('notifyPatient called', { body: req.body, user: req.user });
   try {
     const { appointmentId, patientId, patientName, professionalName } = req.body;
     const professionalId = req.user.id;
