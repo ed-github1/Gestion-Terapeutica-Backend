@@ -15,9 +15,18 @@ export const register = async (req, res) => {
 
     console.log('📝 Register request:', { email, nombre, apellido, firstName, lastName, role, hasPassword: !!password });
 
+
     // Support both English and Spanish field names
     const finalNombre = nombre || firstName;
     const finalApellido = apellido || lastName;
+
+    // Prevent patient registration here
+    if (role === 'patient') {
+      return res.status(400).json({
+        success: false,
+        message: 'El registro de pacientes debe realizarse mediante invitación. Usa /register/patient.'
+      });
+    }
 
     // Validate input
     if (!email || !password || !finalNombre || !finalApellido) {
@@ -149,16 +158,20 @@ export const login = async (req, res) => {
 
     // Get professional profile if user is professional
     let professionalProfile = null;
+    let professionalId = null;
     if (user.role === 'professional') {
       professionalProfile = await Professional.findOne({ userId: user._id });
+      console.log('[LOGIN] professionalProfile:', professionalProfile);
+      professionalId = professionalProfile?._id;
+      console.log('[LOGIN] professionalId to be set in token:', professionalId);
     }
 
-    // Generate token with professional ID
+    // Generate token with Professional's _id as professionalId
     const token = generateToken({
       id: user._id,
       email: user.email,
       role: user.role,
-      professionalId: professionalProfile?._id,
+      professionalId: professionalId,
       nombre: user.nombre,
       apellido: user.apellido
     });
@@ -415,44 +428,60 @@ export const registerPatient = async (req, res) => {
       console.log('✅ User created:', user._id);
     }
 
-    // Create patient profile with all data from invitation
-    const newPatient = await Patient.create({
-      userId: user._id,
-      profesionalAsignado: invitation.professionalId,
-      createdBy: invitation.professionalId,
-      datosPersonales: {
-        nombre,
-        apellido,
-        email,
-        telefono,
-        fechaNacimiento: patientData.dateOfBirth,
-        genero: patientData.gender,
-        direccion: {
-          calle: patientData.address || '',
-          ciudad: '',
-          estado: '',
-          codigoPostal: ''
-        }
-        // Add other fields as needed
-      },
-      contactoEmergencia: {
-        nombre: patientData.emergencyContact || '',
-        telefono: patientData.emergencyPhone || ''
-      },
-      historialMedico: {
-        alergias: patientData.allergies ? [patientData.allergies] : [],
-        medicamentosActuales: patientData.currentMedications ? [patientData.currentMedications] : [],
-        condicionesMedicas: [],
-        cirugiasPrevias: []
-      },
-      consentimientos: consentimientos || {
-        terminosCondiciones: true,
-        privacidad: true,
-        comunicaciones: false
-      }
-    });
 
-    console.log('✅ Patient profile created:', newPatient._id);
+    // Create patient profile with all data from invitation
+    let newPatient = null;
+    try {
+      newPatient = await Patient.create({
+        userId: user._id,
+        profesionalAsignado: invitation.professionalId,
+        createdBy: invitation.professionalId,
+        datosPersonales: {
+          nombre,
+          apellido,
+          email,
+          telefono,
+          fechaNacimiento: patientData.dateOfBirth,
+          genero: patientData.gender,
+          direccion: {
+            calle: patientData.address || '',
+            ciudad: '',
+            estado: '',
+            codigoPostal: ''
+          }
+        },
+        contactoEmergencia: {
+          nombre: patientData.emergencyContact || '',
+          telefono: patientData.emergencyPhone || ''
+        },
+        historialMedico: {
+          alergias: patientData.allergies ? [patientData.allergies] : [],
+          medicamentosActuales: patientData.currentMedications ? [patientData.currentMedications] : [],
+          condicionesMedicas: [],
+          cirugiasPrevias: []
+        },
+        consentimientos: consentimientos || {
+          terminosCondiciones: true,
+          privacidad: true,
+          comunicaciones: false
+        }
+      });
+      if (!newPatient) {
+        console.error('❌ Patient document was not created for user:', user._id);
+        return res.status(500).json({
+          success: false,
+          message: 'No se pudo crear el perfil de paciente. Intenta nuevamente o contacta soporte.'
+        });
+      }
+      console.log('✅ Patient profile created:', newPatient._id);
+    } catch (err) {
+      console.error('❌ Error creating patient document:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al crear el perfil de paciente',
+        error: err.message
+      });
+    }
 
     // Mark invitation as used
     await invitation.markAsUsed();

@@ -38,12 +38,14 @@ export const authenticateToken = (req, res, next) => {
  */
 export const requireRole = (...allowedRoles) => {
   return (req, res, next) => {
+    console.log('[requireRole] BEFORE:', JSON.stringify(req.user));
     console.log('🔐 Role check:', { 
       userRole: req.user?.role, 
       allowedRoles,
-      userId: req.user?.id 
+      userId: req.user?.id,
+      professionalId: req.user?.professionalId
     });
-    
+
     if (!req.user || !req.user.role) {
       return res.status(403).json({
         success: false,
@@ -58,6 +60,8 @@ export const requireRole = (...allowedRoles) => {
       });
     }
 
+    // Log after to catch any mutation
+    console.log('[requireRole] AFTER:', JSON.stringify(req.user));
     next();
   };
 };

@@ -41,9 +41,10 @@ export const videoToken = (req, res) => {
  */
 export const notifyPatient = async (req, res) => {
   console.log('notifyPatient called', { body: req.body, user: req.user });
+  console.log('[notifyPatient] START req.user:', JSON.stringify(req.user));
   try {
     const { appointmentId, patientId, patientName, professionalName } = req.body;
-    const professionalId = req.user.id;
+    const professionalId = req.user.professionalId;
 
     // Validate required fields
     if (!appointmentId || !patientId) {
@@ -81,11 +82,19 @@ export const notifyPatient = async (req, res) => {
       });
     }
 
+    // Extra logging for professional authorization check
+    console.log('[notifyPatient] BEFORE COMPARISON req.user:', JSON.stringify(req.user));
+    console.log('[notifyPatient] Comparing appointment.professionalId:', appointment.professionalId._id?.toString?.() || appointment.professionalId, 'with req.user.professionalId:', professionalId);
     // Verify that the professional making the request owns this appointment
     if (appointment.professionalId._id.toString() !== professionalId) {
+      console.warn('[notifyPatient] Professional authorization failed. appointment.professionalId:', appointment.professionalId._id.toString(), 'req.user.professionalId:', professionalId);
       return res.status(403).json({
         success: false,
-        error: 'Unauthorized: You can only notify patients for your own appointments'
+        error: 'Unauthorized: You can only notify patients for your own appointments',
+        debug: {
+          appointmentProfessionalId: appointment.professionalId._id.toString(),
+          userProfessionalId: professionalId
+        }
       });
     }
 
@@ -156,6 +165,17 @@ export const notifyPatient = async (req, res) => {
     });
   } catch (error) {
     console.error('Error notifying patient:', error);
+    if (error.stack) {
+      console.error('Stack trace:', error.stack);
+    }
+    // Log appointment and invitation context if available
+    try {
+      const { appointmentId, patientId } = req.body;
+      const appointment = await Appointment.findById(appointmentId);
+      console.error('Appointment context:', appointment);
+    } catch (ctxErr) {
+      console.error('Error fetching appointment context:', ctxErr);
+    }
     res.status(500).json({
       success: false,
       error: 'Error sending notification',
