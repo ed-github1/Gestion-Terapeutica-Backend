@@ -8,7 +8,6 @@ import videoRoutes from './routes/video.js'
 import patientsRoutes from './routes/patients.js'
 import appointmentsRouter from './routes/appointments.js'
 import availabilityRouter from './routes/availability.js'
-import morgan from 'morgan'
 const app = express()
 
 // Connect to MongoDB
@@ -26,7 +25,6 @@ app.use(cors({
 }))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
-app.use(morgan('dev'))
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
