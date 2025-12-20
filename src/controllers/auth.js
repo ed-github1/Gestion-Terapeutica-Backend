@@ -65,7 +65,8 @@ export const register = async (req, res) => {
       password: hashedPassword,
       nombre: finalNombre,
       apellido: finalApellido,
-      role: normalizedRole
+      role: normalizedRole,
+      activo: true // Ensure new users are active by default
     });
 
     // If professional, create professional profile
@@ -130,8 +131,8 @@ export const login = async (req, res) => {
       });
     }
 
-    // Find user (include password for verification)
-    const user = await User.findOne({ email }).select('+password');
+    // Find user (include password, activo, role, nombre, apellido for verification and response)
+    const user = await User.findOne({ email }).select('password activo role nombre apellido email');
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -178,6 +179,10 @@ export const login = async (req, res) => {
 
     // Remove password before sending response
     const userResponse = user.toJSON();
+    // Ensure role is present in the response
+    if (!userResponse.role && user.role) {
+      userResponse.role = user.role;
+    }
 
     res.status(200).json({
       success: true,
@@ -423,7 +428,8 @@ export const registerPatient = async (req, res) => {
         nombre,
         apellido,
         role: 'patient',
-        isRegistered: true
+        isRegistered: true,
+        activo: true // Ensure new patients are active by default
       });
       console.log('✅ User created:', user._id);
     }
